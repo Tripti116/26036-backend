@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from database import get_db
@@ -156,8 +156,56 @@ def complete_verification(
     verification.deviation_percentage = round(deviation, 6)
     verification.result = result
     verification.remarks = data.remarks
-    from datetime import timezone as _tz
-    verification.inspection_date = datetime.now(_tz.utc)
+    verification.inspection_date = datetime.now(timezone.utc)
+    verification.status = VerificationStatus.COMPLETED
+
+    instrument = db.query(Instrument).filter(Instrument.id == verification.instrument_id).first()
+    if instrument:
+        if result == VerificationResult.FAIL:
+            instrument.status = InstrumentStatus.FAILED
+        else:
+            instrument.status = InstrumentStatus.VERIFIED
+
+    db.commit()
+    db.refresh(verification)
+    return {
+        "verification_id": verification.id,
+        "result": result.value,
+        "deviation_percentage": round(deviation, 6),
+    }
+
+
+@router.post("/{verification_id}/result")
+def submit_verification_result(
+    verification_id: int,
+    data: VerificationComplete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.INSPECTOR)),
+):
+    verification = db.query(Verification).filter(Verification.id == verification_id).first()
+    if not verification:
+        raise HTTPException(status_code=404, detail="Verification not found")
+
+    if verification.inspector_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not assigned to this verification")
+
+    if verification.status != VerificationStatus.IN_PROGRESS:
+        raise HTTPException(status_code=400, detail="Verification is not in progress")
+
+    if data.expected_value == 0:
+        raise HTTPException(status_code=400, detail="Expected value cannot be zero")
+
+    deviation = abs(data.measured_value - data.expected_value) / abs(data.expected_value) * 100
+    result = VerificationResult.PASS if deviation <= data.tolerance_limit else VerificationResult.FAIL
+
+    verification.reference_standard_used = data.reference_standard_used
+    verification.expected_value = data.expected_value
+    verification.measured_value = data.measured_value
+    verification.tolerance_limit = data.tolerance_limit
+    verification.deviation_percentage = round(deviation, 6)
+    verification.result = result
+    verification.remarks = data.remarks
+    verification.inspection_date = datetime.now(timezone.utc)
     verification.status = VerificationStatus.COMPLETED
 
     instrument = db.query(Instrument).filter(Instrument.id == verification.instrument_id).first()

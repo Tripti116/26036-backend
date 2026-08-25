@@ -45,7 +45,7 @@ app.include_router(public.router)
 
 @app.get("/api/health", tags=["Health"])
 def health_check():
-    return {"status": "healthy", "service": "SIH26036 Backend"}
+    return {"status": "healthy", "service": "SIH26036 Verification Backend"}
 
 
 @app.get("/")

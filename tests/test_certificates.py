@@ -1,4 +1,6 @@
 from tests.conftest import get_auth_header
+import os
+from config import CERTIFICATES_DIR
 
 
 def _create_instrument(client, headers, instrument_id, serial_number):
@@ -58,7 +60,39 @@ def test_generate_certificate(client, owner_user, admin_user, inspector_user):
 
     r = client.post(f"/api/certificates/generate/{vid}", headers=admin_headers)
     assert r.status_code == 200
-    assert "certificate_number" in r.json()
+    data = r.json()
+    assert "certificate_number" in data
+    assert data["certificate_number"].startswith("CERT-2026-")
+    assert "certificate_id" in data
+
+    cert_id = data["certificate_id"]
+    cert_r = client.get(f"/api/certificates/{cert_id}", headers=admin_headers)
+    assert cert_r.status_code == 200
+    cert_data = cert_r.json()
+    assert cert_data["pdf_path"] is not None
+    assert os.path.exists(cert_data["pdf_path"])
+    assert cert_data["pdf_path"].endswith(".pdf")
+    assert os.path.getsize(cert_data["pdf_path"]) > 0
+
+
+def test_pdf_content_verifiable(client, owner_user, admin_user, inspector_user):
+    owner_headers = get_auth_header(client, "testowner@test.com", "ownerpass")
+    admin_headers = get_auth_header(client, "testadmin@test.com", "adminpass")
+    inspector_headers = get_auth_header(client, "testinspector@test.com", "inspectorpass")
+
+    inst = _create_instrument(client, owner_headers, "INST-CERTPDF-001", "SN-CERTPDF-001")
+    vid = _full_verification_flow(
+        client, owner_headers, admin_headers, inspector_headers,
+        inspector_user.id, inst,
+    )
+    cert_resp = client.post(f"/api/certificates/generate/{vid}", headers=admin_headers)
+    cert_id = cert_resp.json()["certificate_id"]
+
+    r = client.get(f"/api/certificates/{cert_id}/download", headers=owner_headers)
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert len(r.content) > 1000
+    assert r.content[:5] == b"%PDF-"
 
 
 def test_duplicate_certificate_rejected(client, owner_user, admin_user, inspector_user):
@@ -191,3 +225,25 @@ def test_unauthorized_certificate_access(client, owner_user):
 def test_unauthenticated_public_verify(client):
     r = client.get("/api/public/verify/CERT-0000-000001")
     assert r.status_code == 404
+
+
+def test_qr_files_generated(client, owner_user, admin_user, inspector_user):
+    owner_headers = get_auth_header(client, "testowner@test.com", "ownerpass")
+    admin_headers = get_auth_header(client, "testadmin@test.com", "adminpass")
+    inspector_headers = get_auth_header(client, "testinspector@test.com", "inspectorpass")
+
+    inst = _create_instrument(client, owner_headers, "INST-QR-001", "SN-QR-001")
+    vid = _full_verification_flow(
+        client, owner_headers, admin_headers, inspector_headers,
+        inspector_user.id, inst,
+    )
+    cert_resp = client.post(f"/api/certificates/generate/{vid}", headers=admin_headers)
+    cert_number = cert_resp.json()["certificate_number"]
+
+    qr_files = [f for f in os.listdir(CERTIFICATES_DIR) if f.startswith("qr_")]
+    assert len(qr_files) >= 1, f"Expected QR files in {CERTIFICATES_DIR}, found: {qr_files}"
+
+    cert_r = client.get(f"/api/certificates/{cert_resp.json()['certificate_id']}", headers=admin_headers)
+    pdf_path = cert_r.json()["pdf_path"]
+    assert pdf_path is not None
+    assert os.path.exists(pdf_path)

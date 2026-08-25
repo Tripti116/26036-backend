@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from database import SessionLocal, Base, engine
+from database import SessionLocal
 from models.user import User, UserRole
 from models.instrument import Instrument
 from passlib.context import CryptContext
@@ -8,7 +8,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def seed():
-    Base.metadata.create_all(bind=engine)
     db: Session = SessionLocal()
 
     try:

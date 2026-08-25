@@ -22,6 +22,7 @@ class InstrumentBase(BaseModel):
     capacity: Optional[str] = None
     accuracy_class: Optional[str] = None
     location: Optional[str] = None
+    purchase_date: Optional[datetime] = None
 
 
 class InstrumentCreate(InstrumentBase):
@@ -32,9 +33,14 @@ class InstrumentUpdate(BaseModel):
     instrument_type: Optional[str] = None
     manufacturer: Optional[str] = None
     model_number: Optional[str] = None
+    serial_number: Optional[str] = None
     capacity: Optional[str] = None
     accuracy_class: Optional[str] = None
     location: Optional[str] = None
+    purchase_date: Optional[datetime] = None
+    last_verification_date: Optional[datetime] = None
+    next_verification_date: Optional[datetime] = None
+    status: Optional[InstrumentStatus] = None
 
 
 class InstrumentOut(InstrumentBase):
@@ -43,5 +49,7 @@ class InstrumentOut(InstrumentBase):
     id: int
     owner_id: int
     status: InstrumentStatus
+    last_verification_date: Optional[datetime] = None
+    next_verification_date: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

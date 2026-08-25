@@ -37,8 +37,9 @@ Digitizes the verification process for weighing and measuring instruments with r
 │   ├── test_auth.py         # Auth tests (register, login, JWT, roles)
 │   ├── test_instruments.py  # Instrument CRUD tests
 │   ├── test_verification.py # Verification workflow tests
-│   ├── test_certificates.py # Certificate generation and public verify tests
-│   └── test_dashboard.py    # Dashboard authorization tests
+│   ├── test_certificates.py # Certificate generation, PDF, QR, public verify tests
+│   ├── test_dashboard.py    # Dashboard authorization tests
+│   └── test_risk.py         # Risk assessment tests
 ├── requirements.txt
 ├── pytest.ini
 ├── .env.example
@@ -135,6 +136,7 @@ These are fake development/demo accounts seeded automatically on startup. Do NOT
 - `GET /api/verification/{id}` - Get verification details
 - `PUT /api/verification/{id}/assign` - Assign inspector (ADMIN)
 - `PUT /api/verification/{id}/complete` - Complete verification with measurements (INSPECTOR)
+- `POST /api/verification/{id}/result` - Submit verification result (INSPECTOR, alias for complete)
 
 ### Certificates
 - `POST /api/certificates/generate/{verification_id}` - Generate certificate (ADMIN/INSPECTOR)
@@ -222,12 +224,17 @@ Test coverage includes:
 - Registration, login, JWT authentication
 - Role-based access control
 - Instrument CRUD and duplicate prevention
+- Cross-owner access prevention
 - Verification request, assignment, completion
 - Deviation calculation accuracy (PASS/FAIL)
-- Certificate generation and duplicate prevention
+- Certificate generation, duplicate prevention, PDF validation
+- QR code file generation verification
 - Public certificate verification
+- Expired certificate detection
 - Dashboard access control
 - Expected value zero rejection
+- Risk assessment scoring
+- Unauthenticated and unauthorized access
 
 ## Running Tests
 

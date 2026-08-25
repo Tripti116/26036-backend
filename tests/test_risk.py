@@ -101,7 +101,6 @@ def test_risk_unauthorized_other_owner(client, owner_user, admin_user, inspector
     owner_headers = get_auth_header(client, "testowner@test.com", "ownerpass")
     inst = _create_instrument(client, owner_headers, "INST-RISK-004", "SN-RISK-004")
 
-    db_user = type("U", (), {"id": 9999, "role": type("R", (), {"value": "OWNER"})()})()
     from tests.conftest import TestSessionLocal
     from models.user import User, UserRole
     from passlib.context import CryptContext

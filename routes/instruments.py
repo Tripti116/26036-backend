@@ -87,7 +87,16 @@ def update_instrument(
     if current_user.role == UserRole.INSPECTOR:
         raise HTTPException(status_code=403, detail="Inspectors cannot update instruments")
 
-    for field, value in update_data.model_dump(exclude_unset=True).items():
+    update_dict = update_data.model_dump(exclude_unset=True)
+    if "serial_number" in update_dict:
+        dup = db.query(Instrument).filter(
+            Instrument.serial_number == update_dict["serial_number"],
+            Instrument.id != instrument.id,
+        ).first()
+        if dup:
+            raise HTTPException(status_code=409, detail="Serial number already in use")
+
+    for field, value in update_dict.items():
         setattr(instrument, field, value)
 
     db.commit()
