@@ -7,6 +7,7 @@ from models.instrument import Instrument, InstrumentStatus
 from models.user import User, UserRole
 from schemas.instrument import InstrumentCreate, InstrumentOut, InstrumentUpdate
 from routes.auth import get_current_user, require_role
+from services.risk_service import calculate_risk_score
 
 router = APIRouter(prefix="/api/instruments", tags=["Instruments"])
 
@@ -110,3 +111,19 @@ def delete_instrument(
     db.delete(instrument)
     db.commit()
     return {"detail": "Instrument deleted successfully"}
+
+
+@router.get("/{instrument_db_id}/risk")
+def get_instrument_risk(
+    instrument_db_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    instrument = db.query(Instrument).filter(Instrument.id == instrument_db_id).first()
+    if not instrument:
+        raise HTTPException(status_code=404, detail="Instrument not found")
+
+    if current_user.role == UserRole.OWNER and instrument.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this instrument")
+
+    return calculate_risk_score(db, instrument)

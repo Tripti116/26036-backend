@@ -1,5 +1,8 @@
 from tests.conftest import get_auth_header
 from models.instrument import InstrumentStatus
+from passlib.context import CryptContext
+from tests.conftest import TestSessionLocal
+from models.user import User, UserRole
 
 
 def test_create_instrument(client, owner_user):
@@ -132,3 +135,76 @@ def test_delete_instrument(client, owner_user):
     inst_id = r.json()["id"]
     r = client.delete(f"/api/instruments/{inst_id}", headers=headers)
     assert r.status_code == 200
+
+
+def test_owner_cannot_view_other_owner_instrument(client, owner_user):
+    headers1 = get_auth_header(client, "testowner@test.com", "ownerpass")
+    inst = client.post(
+        "/api/instruments/",
+        json={
+            "instrument_id": "INST-XOWN-001",
+            "instrument_type": "Scale",
+            "serial_number": "SN-XOWN-001",
+        },
+        headers=headers1,
+    ).json()
+
+    pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    db = TestSessionLocal()
+    other = User(
+        full_name="Other Owner", email="otherowner2@test.com", phone="8888888881",
+        hashed_password=pwd.hash("pass"[:72]), role=UserRole.OWNER,
+    )
+    db.add(other)
+    db.commit()
+    db.close()
+
+    headers2 = get_auth_header(client, "otherowner2@test.com", "pass")
+    r = client.get(f"/api/instruments/{inst['id']}", headers=headers2)
+    assert r.status_code == 403
+
+
+def test_owner_cannot_update_other_owner_instrument(client, owner_user):
+    headers1 = get_auth_header(client, "testowner@test.com", "ownerpass")
+    inst = client.post(
+        "/api/instruments/",
+        json={
+            "instrument_id": "INST-XOWN-002",
+            "instrument_type": "Scale",
+            "serial_number": "SN-XOWN-002",
+        },
+        headers=headers1,
+    ).json()
+
+    pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    db = TestSessionLocal()
+    other = User(
+        full_name="Other Owner 3", email="otherowner3@test.com", phone="8888888882",
+        hashed_password=pwd.hash("pass"[:72]), role=UserRole.OWNER,
+    )
+    db.add(other)
+    db.commit()
+    db.close()
+
+    headers2 = get_auth_header(client, "otherowner3@test.com", "pass")
+    r = client.put(f"/api/instruments/{inst['id']}", json={"location": "Hacked"}, headers=headers2)
+    assert r.status_code == 403
+
+
+def test_unauthenticated_instrument_access(client):
+    r = client.get("/api/instruments/")
+    assert r.status_code == 401
+
+
+def test_inspector_cannot_create_instrument(client, inspector_user):
+    headers = get_auth_header(client, "testinspector@test.com", "inspectorpass")
+    r = client.post(
+        "/api/instruments/",
+        json={
+            "instrument_id": "INST-INS-001",
+            "instrument_type": "Scale",
+            "serial_number": "SN-INS-001",
+        },
+        headers=headers,
+    )
+    assert r.status_code == 403

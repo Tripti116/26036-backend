@@ -1,10 +1,12 @@
 import qrcode
 import os
 import uuid
-from config import CERTIFICATES_DIR
+from config import CERTIFICATES_DIR, PUBLIC_BASE_URL
 
 
-def generate_qr_image(certificate_number: str, base_url: str = "http://localhost:8000") -> str:
+def generate_qr_image(certificate_number: str, base_url: str = None) -> str:
+    if base_url is None:
+        base_url = PUBLIC_BASE_URL
     verify_url = f"{base_url}/api/public/verify/{certificate_number}"
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(verify_url)
@@ -18,5 +20,7 @@ def generate_qr_image(certificate_number: str, base_url: str = "http://localhost
     return filepath
 
 
-def get_verify_url(certificate_number: str, base_url: str = "http://localhost:8000") -> str:
+def get_verify_url(certificate_number: str, base_url: str = None) -> str:
+    if base_url is None:
+        base_url = PUBLIC_BASE_URL
     return f"{base_url}/api/public/verify/{certificate_number}"

@@ -81,6 +81,8 @@ SECRET_KEY=your-secret-key-change-in-production
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 CERTIFICATES_DIR=uploads/certificates
+PUBLIC_BASE_URL=http://localhost:8000
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
 
 If `DATABASE_URL` is empty or not set, the app falls back to SQLite (`sih26036.db`).
@@ -125,6 +127,7 @@ These are fake development/demo accounts seeded automatically on startup. Do NOT
 - `GET /api/instruments/{id}` - Get instrument details
 - `PUT /api/instruments/{id}` - Update instrument
 - `DELETE /api/instruments/{id}` - Delete instrument (ADMIN/OWNER)
+- `GET /api/instruments/{id}/risk` - Risk assessment for instrument (0-100, LOW/MEDIUM/HIGH)
 
 ### Verification
 - `POST /api/verification/request` - Request verification (OWNER)
@@ -189,13 +192,25 @@ Tolerance values are configurable per verification and are NOT official legal st
 
 ## Risk Scoring (Prototype)
 
+Endpoint: `GET /api/instruments/{id}/risk`
+
 Modular prototype risk scoring based on:
 - Previous verification failures
 - Latest deviation percentage
 - Instrument age
 - Overdue verification status
 
-Returns risk_score (0-100) and risk_level (LOW/MEDIUM/HIGH). This is NOT an official government formula and can be replaced with an ML model later.
+Returns:
+```json
+{
+  "instrument_id": "INS-001",
+  "risk_score": 72,
+  "risk_level": "HIGH",
+  "risk_factors": ["Previous verification failure", "High measurement deviation", "Verification overdue"]
+}
+```
+
+Risk levels: LOW (0-29), MEDIUM (30-59), HIGH (60-100). This is NOT an official government formula and can be replaced with an ML model later.
 
 ## Testing
 
@@ -226,7 +241,7 @@ python -m pytest tests/ -v --tb=short
 - JWT authentication via `Authorization: Bearer <token>` header
 - Login returns `access_token` and `token_type`
 - Consistent HTTP status codes (200, 400, 401, 403, 404, 409)
-- CORS configured for all origins (development mode)
+- CORS configurable via `CORS_ORIGINS` environment variable (defaults to `http://localhost:3000`)
 - Swagger UI at `/docs` for API exploration
 
 ## Known Limitations
@@ -239,5 +254,5 @@ python -m pytest tests/ -v --tb=short
 6. No file upload for instrument images/documents
 7. No complaint management system (mentioned in scope but deferred)
 8. SQLite used in development (PostgreSQL recommended for production)
-9. CORS allows all origins (restrict in production)
+9. CORS configured via environment variable (default: localhost:3000)
 10. No rate limiting on API endpoints

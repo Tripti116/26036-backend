@@ -6,7 +6,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import inch
 
-from config import CERTIFICATES_DIR
+from config import CERTIFICATES_DIR, PUBLIC_BASE_URL
 from models.certificate import Certificate, CertificateStatus
 from models.verification import Verification, VerificationStatus, VerificationResult
 from models.instrument import Instrument, InstrumentStatus
@@ -87,7 +87,9 @@ def generate_certificate_pdf(cert_data: dict, qr_path: str, output_path: str) ->
     return output_path
 
 
-def create_certificate(db: Session, verification: Verification, base_url: str = "http://localhost:8000") -> Certificate:
+def create_certificate(db: Session, verification: Verification, base_url: str = None) -> Certificate:
+    if base_url is None:
+        base_url = PUBLIC_BASE_URL
     instrument = db.query(Instrument).filter(Instrument.id == verification.instrument_id).first()
     inspector = db.query(User).filter(User.id == verification.inspector_id).first()
     owner = db.query(User).filter(User.id == instrument.owner_id).first()

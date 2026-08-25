@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from database import get_db
+from config import CERTIFICATES_DIR
 from models.certificate import Certificate, CertificateStatus
 from models.verification import Verification, VerificationStatus, VerificationResult
 from models.instrument import Instrument
@@ -103,6 +104,11 @@ def download_certificate(
 
     if not cert.pdf_path or not os.path.exists(cert.pdf_path):
         raise HTTPException(status_code=404, detail="PDF file not found")
+
+    real_cert_dir = os.path.realpath(CERTIFICATES_DIR)
+    real_pdf_path = os.path.realpath(cert.pdf_path)
+    if not real_pdf_path.startswith(real_cert_dir):
+        raise HTTPException(status_code=403, detail="Access denied")
 
     return FileResponse(
         cert.pdf_path,

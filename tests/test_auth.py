@@ -123,3 +123,42 @@ def test_demo_owner_login(client, seed_demo_accounts):
     )
     assert r.status_code == 200
     assert "access_token" in r.json()
+
+
+def test_register_invalid_email(client):
+    payload = {
+        "full_name": "Bad Email",
+        "email": "not-an-email",
+        "phone": "5555555556",
+        "password": "pass",
+        "role": "OWNER",
+    }
+    r = client.post("/api/auth/register", json=payload)
+    assert r.status_code == 422
+
+
+def test_register_duplicate_phone(client):
+    client.post(
+        "/api/auth/register",
+        json={
+            "full_name": "Phone1", "email": "phone1@test.com",
+            "phone": "1234567890", "password": "pass", "role": "OWNER",
+        },
+    )
+    r = client.post(
+        "/api/auth/register",
+        json={
+            "full_name": "Phone2", "email": "phone2@test.com",
+            "phone": "1234567890", "password": "pass", "role": "OWNER",
+        },
+    )
+    assert r.status_code == 409
+
+
+def test_me_returns_no_password(client, owner_user):
+    headers = get_auth_header(client, "testowner@test.com", "ownerpass")
+    r = client.get("/api/auth/me", headers=headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert "hashed_password" not in data
+    assert "password" not in data

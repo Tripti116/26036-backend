@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -20,7 +20,11 @@ def public_verify_certificate(certificate_number: str, db: Session = Depends(get
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")
 
-    if cert.valid_until and cert.valid_until < datetime.now():
+    now = datetime.now(timezone.utc)
+    valid_until = cert.valid_until
+    if valid_until and valid_until.tzinfo is None:
+        valid_until = valid_until.replace(tzinfo=timezone.utc)
+    if valid_until and valid_until < now:
         if cert.status == CertificateStatus.VALID:
             cert.status = CertificateStatus.EXPIRED
             db.commit()

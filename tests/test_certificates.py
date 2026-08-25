@@ -152,3 +152,42 @@ def test_public_verify(client, owner_user, admin_user, inspector_user):
 def test_public_verify_nonexistent(client):
     r = client.get("/api/public/verify/CERT-9999-999999")
     assert r.status_code == 404
+
+
+def test_expired_certificate_detected(client, owner_user, admin_user, inspector_user):
+    from datetime import datetime, timedelta, timezone
+    from models.certificate import Certificate, CertificateStatus
+    from tests.conftest import TestSessionLocal
+
+    owner_headers = get_auth_header(client, "testowner@test.com", "ownerpass")
+    admin_headers = get_auth_header(client, "testadmin@test.com", "adminpass")
+    inspector_headers = get_auth_header(client, "testinspector@test.com", "inspectorpass")
+
+    inst = _create_instrument(client, owner_headers, "INST-EXP-001", "SN-EXP-001")
+    vid = _full_verification_flow(
+        client, owner_headers, admin_headers, inspector_headers,
+        inspector_user.id, inst,
+    )
+    cert_resp = client.post(f"/api/certificates/generate/{vid}", headers=admin_headers)
+    cert_number = cert_resp.json()["certificate_number"]
+
+    db = TestSessionLocal()
+    cert = db.query(Certificate).filter(Certificate.certificate_number == cert_number).first()
+    cert.valid_until = datetime.now(timezone.utc) - timedelta(days=30)
+    db.commit()
+    db.close()
+
+    r = client.get(f"/api/public/verify/{cert_number}")
+    assert r.status_code == 200
+    assert r.json()["status"] == "EXPIRED"
+
+
+def test_unauthorized_certificate_access(client, owner_user):
+    headers = get_auth_header(client, "testowner@test.com", "ownerpass")
+    r = client.get("/api/certificates/99999", headers=headers)
+    assert r.status_code == 404
+
+
+def test_unauthenticated_public_verify(client):
+    r = client.get("/api/public/verify/CERT-0000-000001")
+    assert r.status_code == 404
