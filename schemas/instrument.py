@@ -1,6 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from enum import Enum
 from datetime import datetime
+from typing import Optional
+
 
 class InstrumentStatus(str, Enum):
     REGISTERED = "REGISTERED"
@@ -10,24 +12,36 @@ class InstrumentStatus(str, Enum):
     EXPIRED = "EXPIRED"
     SUSPENDED = "SUSPENDED"
 
+
 class InstrumentBase(BaseModel):
     instrument_id: str
     instrument_type: str
-    manufacturer: str | None = None
-    model_number: str | None = None
+    manufacturer: Optional[str] = None
+    model_number: Optional[str] = None
     serial_number: str
-    capacity: str | None = None
-    accuracy_class: str | None = None
-    location: str | None = None
+    capacity: Optional[str] = None
+    accuracy_class: Optional[str] = None
+    location: Optional[str] = None
+
 
 class InstrumentCreate(InstrumentBase):
     pass
 
+
+class InstrumentUpdate(BaseModel):
+    instrument_type: Optional[str] = None
+    manufacturer: Optional[str] = None
+    model_number: Optional[str] = None
+    capacity: Optional[str] = None
+    accuracy_class: Optional[str] = None
+    location: Optional[str] = None
+
+
 class InstrumentOut(InstrumentBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     owner_id: int
     status: InstrumentStatus
-    created_at: datetime
-
-    class Config:
-        orm_mode = True
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

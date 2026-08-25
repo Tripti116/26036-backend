@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 from database import Base
 import enum
 
+
 class InstrumentStatus(str, enum.Enum):
     REGISTERED = "REGISTERED"
     PENDING_VERIFICATION = "PENDING_VERIFICATION"
@@ -11,6 +12,7 @@ class InstrumentStatus(str, enum.Enum):
     FAILED = "FAILED"
     EXPIRED = "EXPIRED"
     SUSPENDED = "SUSPENDED"
+
 
 class Instrument(Base):
     __tablename__ = "instruments"
@@ -33,3 +35,5 @@ class Instrument(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     owner = relationship("User", backref="instruments")
+    verifications = relationship("Verification", back_populates="instrument")
+    certificates = relationship("Certificate", back_populates="instrument")
